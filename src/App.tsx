@@ -4,6 +4,14 @@
  */
 
 import React, { useCallback, useEffect, useState, useRef } from 'react';
+import {
+  Routes,
+  Route,
+  Navigate,
+  BrowserRouter,
+  useNavigate
+} from 'react-router-dom';
+
 // eslint-disable-next-line import/no-extraneous-dependencies
 import ReactDOMClient from 'react-dom/client';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -17,6 +25,7 @@ import {
   FocusableComponentLayout,
   KeyPressDetails
 } from './index';
+import assets from './assets';
 
 const logo = require('../logo.png').default;
 
@@ -43,45 +52,6 @@ const rows = shuffle([
   }
 ]);
 
-const assets = [
-  {
-    title: 'Asset 1',
-    color: '#714ADD'
-  },
-  {
-    title: 'Asset 2',
-    color: '#AB8DFF'
-  },
-  {
-    title: 'Asset 3',
-    color: '#512EB0'
-  },
-  {
-    title: 'Asset 4',
-    color: '#714ADD'
-  },
-  {
-    title: 'Asset 5',
-    color: '#AB8DFF'
-  },
-  {
-    title: 'Asset 6',
-    color: '#512EB0'
-  },
-  {
-    title: 'Asset 7',
-    color: '#714ADD'
-  },
-  {
-    title: 'Asset 8',
-    color: '#AB8DFF'
-  },
-  {
-    title: 'Asset 9',
-    color: '#512EB0'
-  }
-];
-
 interface MenuItemBoxProps {
   focused: boolean;
 }
@@ -89,7 +59,7 @@ interface MenuItemBoxProps {
 const MenuItemBox = styled.div<MenuItemBoxProps>`
   width: 171px;
   height: 51px;
-  background-color: #b056ed;
+  background-color: '#b056ed';
   border-color: white;
   border-style: solid;
   border-width: ${({ focused }) => (focused ? '6px' : 0)};
@@ -98,8 +68,11 @@ const MenuItemBox = styled.div<MenuItemBoxProps>`
   margin-bottom: 37px;
 `;
 
-function MenuItem() {
-  const { ref, focused } = useFocusable();
+function MenuItem(_props: { handleOnEnterPress: () => void }) {
+  const { handleOnEnterPress } = _props;
+  const { ref, focused } = useFocusable({
+    onEnterPress: handleOnEnterPress
+  });
 
   return <MenuItemBox ref={ref} focused={focused} />;
 }
@@ -134,13 +107,13 @@ function Menu({ focusKey: focusKeyParam }: MenuProps) {
     ref,
     focusSelf,
     hasFocusedChild,
-    focusKey
+    focusKey,
     // setFocus, -- to set focus manually to some focusKey
     // navigateByDirection, -- to manually navigate by direction
     // pause, -- to pause all navigation events
     // resume, -- to resume all navigation events
     // updateAllLayouts, -- to force update all layouts when needed
-    // getCurrentFocusKey -- to get the current focus key
+    getCurrentFocusKey // -- to get the current focus key
   } = useFocusable({
     focusable: true,
     saveLastFocusedChild: false,
@@ -161,15 +134,24 @@ function Menu({ focusKey: focusKeyParam }: MenuProps) {
     focusSelf();
   }, [focusSelf]);
 
+  const navigate = useNavigate();
+
+  const handlePress = useCallback(
+    (path: string) => {
+      navigate(path);
+      console.log(`navigate to: ${path} and focuskey: ${getCurrentFocusKey()}`);
+    },
+    [getCurrentFocusKey, navigate]
+  );
+
   return (
     <FocusContext.Provider value={focusKey}>
       <MenuWrapper ref={ref} hasFocusedChild={hasFocusedChild}>
         <NmLogo src={logo} />
-        <MenuItem />
-        <MenuItem />
-        <MenuItem />
-        <MenuItem />
-        <MenuItem />
+        <MenuItem handleOnEnterPress={() => handlePress('/')} />
+        <MenuItem handleOnEnterPress={() => handlePress('/another')} />
+        <MenuItem handleOnEnterPress={() => handlePress('/')} />
+        <MenuItem handleOnEnterPress={() => handlePress('/another')} />
       </MenuWrapper>
     </FocusContext.Provider>
   );
@@ -363,13 +345,17 @@ const ScrollingRows = styled.div`
 `;
 
 function Content() {
-  const { ref, focusKey } = useFocusable();
+  const { ref, focusKey, getCurrentFocusKey } = useFocusable();
 
   const [selectedAsset, setSelectedAsset] = useState(null);
 
-  const onAssetPress = useCallback((asset: AssetProps) => {
-    setSelectedAsset(asset);
-  }, []);
+  const onAssetPress = useCallback(
+    (asset: AssetProps) => {
+      setSelectedAsset(asset);
+      console.log('/ asset:', getCurrentFocusKey());
+    },
+    [getCurrentFocusKey]
+  );
 
   const onRowFocus = useCallback(
     ({ y }: { y: number }) => {
@@ -386,9 +372,7 @@ function Content() {
       <ContentWrapper>
         <ContentTitle>Norigin Spatial Navigation</ContentTitle>
         <SelectedItemWrapper>
-          <SelectedItemBox
-            color={selectedAsset ? selectedAsset.color : '#565b6b'}
-          />
+          <SelectedItemBox color="red" />
           <SelectedItemTitle>
             {selectedAsset
               ? selectedAsset.title
@@ -412,6 +396,47 @@ function Content() {
   );
 }
 
+function AnotherContent() {
+  const { ref, focusKey, getCurrentFocusKey } = useFocusable();
+
+  const [, setSelectedAsset] = useState(null);
+
+  const onAssetPress = useCallback(
+    (asset: AssetProps) => {
+      setSelectedAsset(asset);
+      console.log('/another asset:', getCurrentFocusKey());
+    },
+    [getCurrentFocusKey]
+  );
+
+  const onRowFocus = useCallback(
+    ({ y }: { y: number }) => {
+      ref.current.scrollTo({
+        top: y,
+        behavior: 'smooth'
+      });
+    },
+    [ref]
+  );
+
+  return (
+    <FocusContext.Provider value={focusKey}>
+      <ContentWrapper>
+        <ScrollingRows ref={ref}>
+          {rows.map(({ title }) => (
+            <ContentRow
+              key={title}
+              title={title}
+              onAssetPress={onAssetPress}
+              onFocus={onRowFocus}
+            />
+          ))}
+        </ScrollingRows>
+      </ContentWrapper>
+    </FocusContext.Provider>
+  );
+}
+
 const AppContainer = styled.div`
   background-color: #221c35;
   width: 1440px;
@@ -426,15 +451,27 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
+function MyRoutes() {
+  return (
+    <Routes>
+      <Route element={<Content />} path="/" />
+      <Route element={<AnotherContent />} path="/another" />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
 function App() {
   return (
-    <React.StrictMode>
-      <AppContainer>
-        <GlobalStyle />
-        <Menu focusKey="MENU" />
-        <Content />
-      </AppContainer>
-    </React.StrictMode>
+    <BrowserRouter>
+      <React.StrictMode>
+        <AppContainer>
+          <GlobalStyle />
+          <Menu focusKey="MENU" />
+          <MyRoutes />
+        </AppContainer>
+      </React.StrictMode>
+    </BrowserRouter>
   );
 }
 
