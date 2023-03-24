@@ -59,7 +59,7 @@ interface MenuItemBoxProps {
 const MenuItemBox = styled.div<MenuItemBoxProps>`
   width: 171px;
   height: 51px;
-  background-color: '#b056ed';
+  background-color: #b056ed;
   border-color: white;
   border-style: solid;
   border-width: ${({ focused }) => (focused ? '6px' : 0)};
